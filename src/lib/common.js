@@ -126,25 +126,28 @@ export async function rateBook(id, userId, rating) {
 
 export async function addBook(data) {
 let LS = localStorage.getItem('token');
-let userId = jwt_decode(LS);
-
-
+let{ userId } = jwt_decode(LS);
+let grade=parseInt(data.rating);
+const x = [
+  {
+    userId: userId,
+    grade: grade
+  }
+];
+// const xString = JSON.stringify(x);
   const book = {
-    userId,
     title: data.title,
     author: data.author,
     year: data.year,
     genre: data.genre,
-    ratings: [{
-      userId,
-      grade: data.rating ? parseInt(data.rating, 10) : 0,
-    }],
-    averageRating: parseInt(data.rating, 10),
+    ratings:x ,
+    // averageRating: parseInt(data.rating, 10),
   };
+  
   const bodyFormData = new FormData();
   bodyFormData.append('book', JSON.stringify(book));
   bodyFormData.append('image', data.file[0]);
-
+    console.log(bodyFormData);
   try {
     const response = await fetch(`${API_ROUTES.BOOKS}`, {
       method: 'POST',
@@ -155,7 +158,7 @@ let userId = jwt_decode(LS);
     });
   
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.log(response);
     }
   
     return await response.json();

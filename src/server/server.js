@@ -14,6 +14,12 @@ app.use(express.static(path.join(__dirname, 'src/assets/books')));
 
 const cors = require('cors');
 app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+});
 
 const mongoose = require('mongoose')
 
@@ -57,40 +63,44 @@ app.get('/', async (req, res) => {
 });
 
 
-app.post('/api/auth/signup', async  (req, res) => {
- 
-  if(!req.body.email || !req.body.password){
-		return res.status(400).send({
-			message: "Must have email and password"
-		});
-	}
-  const existingUser = await User.findOne({ email: req.body.email });
-  if (existingUser) {
-    return res.status(400).json({ error: 'Un utilisateur avec cet e-mail existe déjà' });
-  }
-  const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
-
-  let newUser = new User({
-    email: req.body.email,
-    password: hashedPassword 
-  });
-  
-  newUser.save()
-    .then((user) => {
-      const token = jwt.sign(
-        {userId : user.id},
-        process.env.TOKEN_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      res.json({ token, message: 'Utilisateur ajouté avec succès' });
-    })
-    .catch(err => {
-      console.error(`Erreur lors de l'ajout de l'utilisateur : ${err}`);
-      res.status(500).json({ error: 'Une erreur s\'est produite lors de l\'inscription' });
+app.post('/api/books', upload.single('image'), async (req, res) => {
+  try {
+    const imageUrl = req.file.filename;
+    const bookData = JSON.parse(req.body.book);
+    function calculateAverageRating(grade) {
+      const ratingsCount = ratings.length;
+      if (ratingsCount === 0) {
+        return 0;
+      } else {
+        const totalRating = ratings.reduce((accumulator, currentRating) => accumulator + currentRating.grade, 0);
+        return totalRating / ratingsCount;
+      }
+    }
+    const { title, author, year, genre, ratings } = bookData;
+    const { userId, grade } = ratings[0];
+    const averageRating = calculateAverageRating(grade);
+// console.log(userId);
+// console.log(grade);
+    const newBook = new Book({
+      title,
+      author,
+      imageUrl,
+      year,
+      genre,
+      ratings: [{ userId:userId, grade:grade }],
+      averageRating
+      // averageRating
     });
-});
+    
 
+    await newBook.save();
+
+    return res.status(201).json({ message: 'Book added successfully' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -211,29 +221,49 @@ app.post('/api/books', upload.single('image'), async (req, res) => {
     const imageUrl = req.file.filename; 
     
     const bookData = JSON.parse(req.body.book);
-    const { userId, title, author, year, genre, ratings, averageRating } = bookData;
-
+    const { title, author, year, genre, ratings} = bookData;
+    function calculateAverageRating(ratings) {
+      const ratingsCount = ratings.length;
+      if (ratingsCount === 0) {
+        return 0;
+      } else {
+        const totalRating = ratings.reduce((accumulator, currentRating) => accumulator + currentRating.grade, 0);
+        return totalRating / ratingsCount;
+      }
+    }
+    console.log(imageUrl);
+    console.log("bookdatua",bookData);
     const newBook = new Book({
-      imageUrl,
-      title,
-      author,
-      year,
-      genre
+      title:title,
+      author:author,
+      imageUrl:imageUrl,
+      year:year,
+      genre:genre,
+      ratings:ratings
     });
-    console.log(ratings);
-    console.log(averageRating);
-    const newRating= new Rating({
-      ratings,
-      averageRating
-    })
+    // const parent = new ParentModel({
+    //   userId: 'user123',
+    //   title: 'Book Title',
+    //   author: 'Book Author',
+    //   imageUrl: 'book-image.jpg',
+    //   year: 2022,
+    //   genre: 'Fiction',
+    //   child: {
+    //     ratings: [
+    //       {
+    //         userId: 'test',
+    //         grade: 4
+    //       },
+    //       {
+    //         userId: 'test2',
+    //         grade: 5
+    //       }
+    //     ]
+    //   }
+    // });
+
+    // newBook.ratings.averageRating = calculateAverageRating(newBook.ratings.ratings);
     
-    // Sauvegardez l'évaluation et obtenez son ID
-    const savedRating = await newRating.save(); 
-console.log(savedRating,"save");
-    // Ajoutez l'ID de l'évaluation au tableau de notations du livre
-    newBook.ratings.push(savedRating._id);
-    
-    // Sauvegardez le livre
     await newBook.save(); 
     
     return res.status(201).json({ message: 'Book added successfully' });
