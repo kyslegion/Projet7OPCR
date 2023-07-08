@@ -44,7 +44,7 @@ mongoose.connect(url,connectionParams)
 
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, '../assets/books'); 
+        cb(null, '../../public/assets/book'); 
       },
       filename: function (req, file, cb) {
         cb(null, Date.now() + '-' + file.originalname); 
@@ -65,7 +65,7 @@ app.get('/', async (req, res) => {
 
 app.post('/api/books', upload.single('image'), async (req, res) => {
   try {
-    const imageUrl = req.file.filename;
+    // const imageUrl = req.file.filename;
     const bookData = JSON.parse(req.body.book);
     function calculateAverageRating(grade) {
       const ratingsCount = ratings.length;
@@ -79,17 +79,14 @@ app.post('/api/books', upload.single('image'), async (req, res) => {
     const { title, author, year, genre, ratings } = bookData;
     const { userId, grade } = ratings[0];
     const averageRating = calculateAverageRating(grade);
-// console.log(userId);
-// console.log(grade);
     const newBook = new Book({
       title,
       author,
-      imageUrl,
+      imageUrl:'/assets/book/' + req.file.filename,
       year,
       genre,
       ratings: [{ userId:userId, grade:grade }],
       averageRating
-      // averageRating
     });
     
 
@@ -190,32 +187,6 @@ app.get('/api/books/:id', async (req, res) => {
 
 
 
-// app.post('/api/books', upload.single('image'), async (req, res) => {
-//   try {
-//     const imageUrl = req.file.filename; 
-    
-//     const bookData = JSON.parse(req.body.book);
-//     const { userId, title, author, year, genre, ratings, averageRating } = bookData;
-
-//     const newBook = new Book({
-//       imageUrl,
-//       title,
-//       author,
-//       year,
-//       genre
-//     });
-//     const newRating= new Rating({
-//       ratings,
-//       averageRating
-//     })
-//     await newBook.save(); 
-//     await newRating.save(); 
-    
-//     return res.status(201).json({ message: 'Book added successfully' });
-//   } catch (error) {
-//     return res.status(500).json({ message: error.message });
-//   }
-// });
 app.post('/api/books', upload.single('image'), async (req, res) => {
   try {
     const imageUrl = req.file.filename; 
@@ -241,28 +212,6 @@ app.post('/api/books', upload.single('image'), async (req, res) => {
       genre:genre,
       ratings:ratings
     });
-    // const parent = new ParentModel({
-    //   userId: 'user123',
-    //   title: 'Book Title',
-    //   author: 'Book Author',
-    //   imageUrl: 'book-image.jpg',
-    //   year: 2022,
-    //   genre: 'Fiction',
-    //   child: {
-    //     ratings: [
-    //       {
-    //         userId: 'test',
-    //         grade: 4
-    //       },
-    //       {
-    //         userId: 'test2',
-    //         grade: 5
-    //       }
-    //     ]
-    //   }
-    // });
-
-    // newBook.ratings.averageRating = calculateAverageRating(newBook.ratings.ratings);
     
     await newBook.save(); 
     
