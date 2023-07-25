@@ -61,8 +61,6 @@ app.get('/', async (req, res) => {
       res.status(500).send("Error fetching books");
     }
 });
-
-
 app.post('/api/books', upload.single('image'), async (req, res) => {
   try {
     // const imageUrl = req.file.filename;
@@ -98,78 +96,75 @@ app.post('/api/books', upload.single('image'), async (req, res) => {
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
-
 app.post('/api/auth/login', async (req, res) => {
   try {
+    console.log(req.body.email);
     const users = await User.find({ email: req.body.email });
-
+console.log(users);
     if (!users.length) {
       console.log('No user found with this email');
       return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet e-mail' });
     }
+    
     const user = users[0];
-    console.log("User found", user);
+    // console.log("User found", user);
 
     const valid = await bcrypt.compare(req.body.password, user.password)
 
     if(!valid){
       console.log('Invalid password');
-      return res.status(401).json({ error: new Error('Not Authorized') })
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
 
     let token;
-    try {
-      token = jwt.sign(
-        {userId : user.id},
-        process.env.TOKEN_SECRET,
-        { expiresIn: '24h' }
-      );
-    } catch (error) {
-      console.log('Failed to generate token', error);
-      return res.status(500).json({ error: new Error('Failed to generate token') });
-    }
 
-    if (!token) {
-      console.log('Failed to generate token');
-      return res.status(500).json({ error: new Error('Failed to generate token') });
-    }
+    if (valid) {
+      try {
+        token = jwt.sign(
+          { userId: user.id },
+          process.env.TOKEN_SECRET,
+          { expiresIn: '24h' }
+        );
+      } catch (error) {
+        console.log('Failed to generate token', error);
+        return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
+      }
 
-    console.log('Login successful, returning response');
-    return res.status(200).json({
-      userId: user.id,
-      token: token
-    });
+      if (!token) {
+        console.log('Failed to generate token');
+        return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
+      }
+
+      console.log('Login successful, returning response');
+      return res.status(200).json({
+        userId: user.id,
+        token: token
+      });
+    } else {
+      console.log('Invalid user or password');
+      return res.status(401).json({ error: 'Identifiant utilisateur ou mot de passe incorrect' });
+    }
     
   } catch (error) {
     console.error('An error occurred:', error);
     return res.status(500).json({ error: error.message });
   }
 });
-
-
-
 app.get('/api/books', async (req, res) => {
   const books = await Book.find({});
   return res.status(200).json(books)
 });
-
-
 app.get('/api/books/bestrating', async (req, res) => {
   try {
-    const ratings = await Rating.find({});
+    const topRatedBooks = await Book.find({})
+  .sort({ averageRating: -1 })
+  .limit(3);
     
-    ratings.sort((a, b) => b.rating - a.rating);
-    
-    const top3Ratings = ratings.slice(0, 3);
-    
-    return res.status(200).json(top3Ratings);
+    return res.status(200).json(topRatedBooks);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 });
-
-
-
 app.get('/api/books/:id', async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -184,9 +179,6 @@ app.get('/api/books/:id', async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-
-
-
 app.post('/api/books', upload.single('image'), async (req, res) => {
   try {
     const imageUrl = req.file.filename; 
@@ -223,26 +215,40 @@ app.post('/api/books', upload.single('image'), async (req, res) => {
 
 app.put('/api/books/:id', upload.single('image'), async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).send('Aucun livre trouvé avec cet ID');
-    }
-
-    if (req.file) {
-      book.imageUrl = '/assets/books/' + req.file.filename;
-    }
-    if (req.body.book) {
-      book.title = req.body.book;
-    }
-    const updatedBook = await book.save();
-
-    res.send(updatedBook);
+    console.log(req.body);
+    console.log(req.file.filename);
+    let imageUrl = '/assets/book/' + req.file.filename;
+    const { title, author, year, genre, ratings } = req.body;
+  //   // Mettre à jour le livre dans la base de données
+    const updatedBook = await Book.findByIdAndUpdate(
+      req.params.id, // l'ID du livre à mettre à jour
+      { title, imageUrl, author, year, genre, ratings }, // les nouvelles données
+      { new: true } // option pour renvoyer le livre mis à jour
+     
+    );
+    return res.status(200).json(updatedBook);
   } catch (error) {
-    res.status(500).send(`Une erreur est survenue lors de la mise à jour du livre: ${error.message}`);
+    // return res.status(500).json({ message: 'Internal Server Error' });
   }
-});
+  // try {
+    // const bookData = JSON.parse(req.body.book);
+    
+  //   const { title, author, year, genre, ratings } = bookData;
+  
 
+  //   // Si le livre n'a pas été trouvé, renvoyer une erreur 404
+  //   if (!updatedBook) {
+  //     return res.status(404).json({ message: 'Book not found' });
+  //   }
+
+  //   // Renvoyer le livre mis à jour
+    
+  // } catch (error) {
+  //   // En cas d'erreur, renvoyer une erreur 500
+  //   console.error(error);
+   
+  // }
+});
 
 app.delete('/api/books/:id', async (req, res) => {
   try {
@@ -257,23 +263,41 @@ app.delete('/api/books/:id', async (req, res) => {
     res.status(500).send(`Une erreur est survenue lors de la suppression du livre: ${error.message}`);
   }
 });
-
-
 app.post('/api/books/:id/rating', async (req, res) => {
   try {
-    let data = {
-      userId: req.body.userId,   
-      rating: req.body.rating
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).send('Aucun livre trouvé avec cet ID');
     }
-    let rating = new Rating(data);
-    await rating.save();
-
-    res.json(rating);
+  
+    const { userId, rating } = req.body;
+    const grade = parseInt(rating, 10); 
+  
+    const ratingIndex = book.ratings.findIndex(rating => rating.userId === userId);
+    if (ratingIndex !== -1) {
+      book.ratings[ratingIndex].grade = grade;
+    } else {
+      book.ratings.push({ userId, grade });
+    }
+  
+    let totalGrade = 0;
+    let totalRatings = book.ratings.length;
+  
+    for (let i = 0; i < book.ratings.length; i++) {
+      totalGrade += book.ratings[i].grade;
+    }
+  
+    let newAverageRating = totalGrade / totalRatings;
+    let roundedAverageRating = Math.round(newAverageRating);
+  
+    book.averageRating = roundedAverageRating;
+  
+    const updatedBook = await book.save();
+    res.send(updatedBook);
   } catch (error) {
-    res.status(500).json({message:error.message});
+    res.status(500).send(`Une erreur est survenue lors de la mise à jour du livre : ${error.message}`);
   }
 });
-
 
 const port = process.env.PORT || 4000;
 

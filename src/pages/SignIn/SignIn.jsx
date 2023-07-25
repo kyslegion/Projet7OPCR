@@ -11,6 +11,7 @@ import styles from './SignIn.module.css';
 function SignIn({ setUser }) {
   const navigate = useNavigate();
   const { user, authenticated } = useUser();
+  
   if (user || authenticated) {
     navigate(APP_ROUTES.DASHBOARD);
   }
@@ -19,6 +20,8 @@ function SignIn({ setUser }) {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState({ error: false, message: '' });
+  const [errorMessage, setErrorMessage] = useState('');
+
   const signIn = async () => {
     try {
       setIsLoading(true);
@@ -30,32 +33,47 @@ function SignIn({ setUser }) {
           password,
         })
       };
-  
+
       fetch('http://localhost:4000/api/auth/login', requestOptions)
-        .then((response) => response.json())
-        .then((data) =>{
-          let token={
+      .then((response) => {
+        if (response.status === 200) {
+          return response.json();
+      } else if (response.status === 400) {
+          setErrorMessage("La demande est invalide.");
+          throw new Error('Bad request');
+      } else if (response.status === 401) {
+          setErrorMessage("L'utilisateur ou le mot de passe est faux");
+          throw new Error('Unauthorized');
+      } else {
+        setErrorMessage("L'utilisateur ou le mot de passe est faux");
+          throw new Error('Request failed');
+      }
+      })
+        .then((data) => {
+          const token = {
             userId: data.userId,
             token: data.token,
-          }
+          };
           setUser(token);
+          console.log(token,"je suit oken");
           localStorage.setItem('token', JSON.stringify(token));
-          console.log(data)
+          // console.log(data);
           navigate('/');
-        } )
+        })
         .catch((error) => {
           console.error('Error:', error);
         });
     } catch (err) {
       console.log(err);
       setNotification({ error: true, message: err.message });
-      console.log('Some error occured during signing in: ', err);
+      console.log('Some error occurred during signing in:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
   const errorClass = notification.error ? styles.Error : null;
+
   return (
     <div className={`${styles.SignIn} container`}>
       <Logo />
@@ -91,7 +109,7 @@ function SignIn({ setUser }) {
             className="
             flex justify-center
             p-2 rounded-md w-1/2 self-center
-            bg-gray-800  text-white hover:bg-gray-800"
+            bg-gray-800 text-white hover:bg-gray-800"
             onClick={signIn}
           >
             {isLoading ? <div className="" /> : null}
@@ -105,19 +123,21 @@ function SignIn({ setUser }) {
             className="
             flex justify-center
             p-2 rounded-md w-1/2 self-center
-            bg-gray-800  text-white hover:bg-gray-800"
+            bg-gray-800 text-white hover:bg-gray-800"
             // onClick={signUp}
           >
             {
-                isLoading
-                  ? <div className="mr-2 w-5 h-5 border-l-2 rounded-full animate-spin" /> : null
-              }
+              isLoading
+                ? <div className="mr-2 w-5 h-5 border-l-2 rounded-full animate-spin" />
+                : null
+            }
             <span>
               <a href={APP_ROUTES.SIGN_UP}>{'S\'inscrire'}</a>
             </span>
           </button>
+         
         </div>
-
+        {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
       </div>
     </div>
   );
@@ -126,4 +146,5 @@ function SignIn({ setUser }) {
 SignIn.propTypes = {
   setUser: PropTypes.func.isRequired,
 };
+
 export default SignIn;

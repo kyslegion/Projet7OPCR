@@ -18,10 +18,11 @@ import ScrollToTop from './components/ScrollToTop/ScrollToTop';
 function App() {
   const [user, setUser] = useState(null);
   const { connectedUser } = useUser();
-
+// console.log(user,"usser");
   useEffect(() => {
     setUser(connectedUser);
   }, [connectedUser]);
+  console.log(connectedUser,"connectedUser dans app");
   return (
     <BrowserRouter>
       <div>

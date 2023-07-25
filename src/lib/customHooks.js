@@ -10,6 +10,7 @@ export function useUser() {
   useEffect(() => {
     async function getUserDetails() {
       const { authenticated, user } = await getAuthenticatedUser();
+      // console.log(user,"dans getuset detail");
       setConnectedUser(user);
       setAuth(authenticated);
       setUserLoading(false);

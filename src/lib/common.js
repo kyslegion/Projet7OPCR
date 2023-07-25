@@ -1,12 +1,12 @@
 import axios from 'axios';
 import jwt_decode from 'jwt-decode';
 
-let token = localStorage.getItem('token');
-let decoded;
+// let token = localStorage.getItem('token');
+// let decoded;
 
 try {
-  decoded = jwt_decode(token);
-  console.log(decoded.userId);
+  // decoded = jwt_decode(token);
+  // console.log(decoded.userId);
 } catch (error) {
   console.error('Une erreur s\'est produite lors du décodage du jeton :', error.message);
 }
@@ -33,12 +33,14 @@ export function getFromLocalStorage(item) {
 export async function getAuthenticatedUser() {
   const defaultReturnObject = { authenticated: false, user: null };
   try {
-    const token = getFromLocalStorage('token');
-    const userId = getFromLocalStorage('userId');
-    if (!token) {
+    const tokenString = getFromLocalStorage('token');
+    const tokenObject = JSON.parse(tokenString);
+    // console.log('test token:', tokenObject);
+    if (!tokenObject) {
       return defaultReturnObject;
     }
-    return { authenticated: true, user: { userId, token } };
+    return { authenticated: true, user: tokenObject  };
+  
   } catch (err) {
     console.error('getAuthenticatedUser, Something Went Wrong', err);
     return defaultReturnObject;
@@ -103,8 +105,19 @@ export async function deleteBook(id) {
 }
 
 export async function rateBook(id, userId, rating) {
+  // console.log("dans rate",id,userId,rating);
+  console.log("dans ratebook fonction");
+
+  let token = localStorage.getItem('token');
+  let decoded;
+  
+try {
+  decoded = jwt_decode(token);
+} catch (error) {
+  
+}
   const data = {
-    userId,
+    userId:decoded.userId,
     rating: parseInt(rating, 10),
   };
 
@@ -170,17 +183,23 @@ const x = [
 }
 
 export async function updateBook(data, id) {
-  const userId = localStorage.getItem('userId');
-
+  // const a = localStorage.getItem('token');
+  // let tokenObject = JSON.parse(a);
+  // let userId = tokenObject.userId;
+// console.log(userId,"userId");
+// console.log(data,"data");
+// console.log(id,"id");
+  // const userId = localStorage.getItem('token');
+// console.log(data);
   let newData;
   const book = {
-    userId,
+    id: data.id,
     title: data.title,
     author: data.author,
     year: data.year,
     genre: data.genre,
   };
-  console.log(data.file[0]);
+  // console.log("dans updatebook");
   if (data.file[0]) {
     newData = new FormData();
     newData.append('book', JSON.stringify(book));
