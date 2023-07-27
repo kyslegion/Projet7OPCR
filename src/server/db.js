@@ -1,7 +1,5 @@
 const mongoose = require('mongoose')
-
 const url = "mongodb+srv://kyslegion:12345@cluster0.ytv6p.mongodb.net/projet7?retryWrites=true&w=majority";
-
 const connectionParams={
     useNewUrlParser: true,
     useUnifiedTopology: true 
@@ -13,8 +11,6 @@ mongoose.connect(url,connectionParams)
     .catch( (err) => {
         console.error(`Error connecting to the database. \n${err}`);
     })
-
-// Définir le schéma
 const bookSchema = new mongoose.Schema({
   userId: {
     type: String,
@@ -37,10 +33,7 @@ const bookSchema = new mongoose.Schema({
     required: true
   }
 }, { collection: 'book' });
-// Définir le modèle
 const Book = mongoose.model('Book', bookSchema);
-
-// Récupérer les données
 Book.find({}, function(err, docs) {
   if (err) {
     console.error(err);

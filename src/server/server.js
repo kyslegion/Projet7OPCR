@@ -53,17 +53,16 @@ mongoose.connect(url,connectionParams)
     
 const upload = multer({ storage: storage });
 app.get('/', async (req, res) => {
-    try {
-      const books = await Book.find().exec();
-      res.json(books);
-    } catch (err) {
-      console.error(err);
-      res.status(500).send("Error fetching books");
-    }
+  try {
+    const books = await Book.find().exec();
+    res.json(books);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching books");
+  }
 });
 app.post('/api/books', upload.single('image'), async (req, res) => {
   try {
-    // const imageUrl = req.file.filename;
     const bookData = JSON.parse(req.body.book);
     function calculateAverageRating(grade) {
       const ratingsCount = ratings.length;
@@ -97,8 +96,6 @@ app.post('/api/books', upload.single('image'), async (req, res) => {
   }
 });
 app.post('/api/auth/signup', async (req, res) => {
-  console.log(req.body);
- 
   if(!req.body.email || !req.body.password){
 		return res.status(400).send({
 			message: "Must have email and password"
@@ -132,16 +129,13 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 app.post('/api/auth/login', async (req, res) => {
   try {
-    console.log(req.body.email);
     const users = await User.find({ email: req.body.email });
-console.log(users);
     if (!users.length) {
       console.log('No user found with this email');
       return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet e-mail' });
     }
     
     const user = users[0];
-    // console.log("User found", user);
 
     const valid = await bcrypt.compare(req.body.password, user.password)
 
@@ -202,7 +196,6 @@ app.get('/api/books/bestrating', async (req, res) => {
 app.get('/api/books/:id', async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
-    console.log("hello");
     
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
@@ -228,8 +221,6 @@ app.post('/api/books', upload.single('image'), async (req, res) => {
         return totalRating / ratingsCount;
       }
     }
-    console.log(imageUrl);
-    console.log("bookdatua",bookData);
     const newBook = new Book({
       title:title,
       author:author,
