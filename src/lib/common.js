@@ -1,15 +1,4 @@
 import axios from 'axios';
-import jwt_decode from 'jwt-decode';
-
-// let token = localStorage.getItem('token');
-// let decoded;
-
-try {
-  // decoded = jwt_decode(token);
-  // console.log(decoded.userId);
-} catch (error) {
-  console.error('Une erreur s\'est produite lors du décodage du jeton :', error.message);
-}
 import { API_ROUTES } from '../utils/constants';
 
 function formatBooks(bookArray) {
@@ -33,14 +22,12 @@ export function getFromLocalStorage(item) {
 export async function getAuthenticatedUser() {
   const defaultReturnObject = { authenticated: false, user: null };
   try {
-    const tokenString = getFromLocalStorage('token');
-    const tokenObject = JSON.parse(tokenString);
-    // console.log('test token:', tokenObject);
-    if (!tokenObject) {
+    const token = getFromLocalStorage('token');
+    const userId = getFromLocalStorage('userId');
+    if (!token) {
       return defaultReturnObject;
     }
-    return { authenticated: true, user: tokenObject  };
-  
+    return { authenticated: true, user: { userId, token } };
   } catch (err) {
     console.error('getAuthenticatedUser, Something Went Wrong', err);
     return defaultReturnObject;
@@ -105,19 +92,8 @@ export async function deleteBook(id) {
 }
 
 export async function rateBook(id, userId, rating) {
-  // console.log("dans rate",id,userId,rating);
-  console.log("dans ratebook fonction");
-
-  let token = localStorage.getItem('token');
-  let decoded;
-  
-try {
-  decoded = jwt_decode(token);
-} catch (error) {
-  
-}
   const data = {
-    userId:decoded.userId,
+    userId,
     rating: parseInt(rating, 10),
   };
 
@@ -138,68 +114,50 @@ try {
 }
 
 export async function addBook(data) {
-let LS = localStorage.getItem('token');
-let{ userId } = jwt_decode(LS);
-let grade=parseInt(data.rating);
-const x = [
-  {
-    userId: userId,
-    grade: grade
-  }
-];
-// const xString = JSON.stringify(x);
+  const userId = localStorage.getItem('userId');
   const book = {
+    userId,
     title: data.title,
     author: data.author,
     year: data.year,
     genre: data.genre,
-    ratings:x ,
-    // averageRating: parseInt(data.rating, 10),
+    ratings: [{
+      userId,
+      grade: data.rating ? parseInt(data.rating, 10) : 0,
+    }],
+    averageRating: parseInt(data.rating, 10),
   };
-  
   const bodyFormData = new FormData();
   bodyFormData.append('book', JSON.stringify(book));
   bodyFormData.append('image', data.file[0]);
-    console.log(bodyFormData);
+
   try {
-    const response = await fetch(`${API_ROUTES.BOOKS}`, {
-      method: 'POST',
-      body: bodyFormData,
+    return await axios({
+      method: 'post',
+      url: `${API_ROUTES.BOOKS}`,
+      data: bodyFormData,
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
     });
-  
-    if (!response.ok) {
-      console.log(response);
-    }
-  
-    return await response.json();
   } catch (err) {
     console.error(err);
     return { error: true, message: err.message };
   }
-  
 }
 
 export async function updateBook(data, id) {
-  // const a = localStorage.getItem('token');
-  // let tokenObject = JSON.parse(a);
-  // let userId = tokenObject.userId;
-// console.log(userId,"userId");
-// console.log(data,"data");
-// console.log(id,"id");
-  // const userId = localStorage.getItem('token');
-// console.log(data);
+  const userId = localStorage.getItem('userId');
+
   let newData;
   const book = {
-    id: data.id,
+    userId,
     title: data.title,
     author: data.author,
     year: data.year,
     genre: data.genre,
   };
-  // console.log("dans updatebook");
+  console.log(data.file[0]);
   if (data.file[0]) {
     newData = new FormData();
     newData.append('book', JSON.stringify(book));

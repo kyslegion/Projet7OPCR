@@ -7,7 +7,7 @@ import { useUser } from '../../lib/customHooks';
 import { APP_ROUTES } from '../../utils/constants';
 import bookAdd from '../../images/book_add.jpg';
 
-function AddBook({setUser}) {
+function AddBook() {
   const navigate = useNavigate();
   const { connectedUser, auth, userLoading } = useUser();
   const [created, setCreated] = useState(false);

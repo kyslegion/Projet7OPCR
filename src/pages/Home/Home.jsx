@@ -5,17 +5,13 @@ import Banner from '../../images/home_banner.jpg';
 import styles from './Home.module.css';
 import { getBooks } from '../../lib/common';
 
-function Home({ setUser }) {
+function Home() {
   const [books, setBooks] = useState(null);
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line max-len
   const displayBooks = () => (books ? books.map((book) => <BookItem size={2} book={book} key={book.id} />) : <h1>Vide</h1>);
 
   useEffect(() => {
-    const token = JSON.parse(localStorage.getItem('token'));
-    if(token){
-      setUser(token)
-    }
     async function getBooksList() {
       const data = await getBooks();
       if (data) {

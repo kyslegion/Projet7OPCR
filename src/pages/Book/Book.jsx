@@ -23,8 +23,6 @@ function Book() {
   useEffect(() => {
     async function getItem() {
       const data = await getBook(params.id);
-      // console.log(data,"data de book");
-      // console.log(book,"creature du livre");
       if (data) {
         setBook(data);
       }
@@ -34,18 +32,6 @@ function Book() {
 
   useEffect(() => {
     if (!userLoading && connectedUser && book?.title) {
-
-
-      
-      // console.log(book);
-      // console.log(rating);
-      // console.log("voici l'utilisateur connecté",connectedUser);
-      // const test = await connectedUser['userId'];
-      // console.log(test);
-
-
-      // console.log(connectedUser,'on est dans book');
-      // console.log(book,'on est dans book aussi');
       const rate = book.ratings.find((elt) => elt.userId === connectedUser.userId);
       if (rate) {
         setUserRated(true);
@@ -82,17 +68,17 @@ function Book() {
       <div className={styles.Book}>
         <div className={styles.BookImage} style={{ backgroundImage: `url("${book.imageUrl}")` }} />
         <div className={styles.BookContent}>
-          {book?.ratings[0].userId && connectedUser?.userId && book.ratings[0].userId === connectedUser.userId ? (
-          <div className={styles.Owner}>
-            <p>Vous avez publié cet ouvrage, vous pouvez le :</p>
-            <p>
-              <Link to={`/livre/modifier/${book.id}`}>modifier</Link>
-              {' '}
-              <span tabIndex={0} role="button" onKeyUp={onDelete} onClick={onDelete}>supprimer</span>
-              {' '}
-            </p>
-          </div>
-        ) : null}
+          {book?.userId === connectedUser?.userId ? (
+            <div className={styles.Owner}>
+              <p>Vous avez publié cet ouvrage, vous pouvez le :</p>
+              <p>
+                <Link to={`/livre/modifier/${book.id}`}>modifier</Link>
+                {' '}
+                <span tabIndex={0} role="button" onKeyUp={onDelete} onClick={onDelete}>supprimer</span>
+                {' '}
+              </p>
+            </div>
+          ) : null}
           <BookInfo book={book} />
           <BookRatingForm
             userRated={userRated}
@@ -119,15 +105,6 @@ function Book() {
     </div>
   ) : null;
 
-  // console.log('connectedUser:', connectedUser);
-  // console.log('book:', book);
-  if (book && connectedUser) {
-    console.log(book.ratings[0].userId === connectedUser.userId,"comparatif");
-    console.log(book.userId ,":book");
-    console.log(book.ratings[0].userId,":booktest");
-    console.log(connectedUser.userId ,'user');
-  }
-  
   return (
     <div className="content-container">
       <BackArrow />
