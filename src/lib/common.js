@@ -147,11 +147,11 @@ export async function addBook(data) {
 }
 
 export async function updateBook(data, id) {
-  const userId = localStorage.getItem('userId');
+  // const userId = localStorage.getItem('userId');
 
   let newData;
   const book = {
-    userId,
+    id: data.id,
     title: data.title,
     author: data.author,
     year: data.year,

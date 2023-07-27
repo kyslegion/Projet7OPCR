@@ -19,12 +19,8 @@ function SignIn({ setUser }) {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState({ error: false, message: '' });
-  // const [form, setForm]=useState({
-  //   email: '',
-  //   password: '',
-  // })
+
   const signIn = async () => {
-    
     try {
       setIsLoading(true);
       const response = await axios({
@@ -53,9 +49,6 @@ function SignIn({ setUser }) {
   };
 
   const signUp = async () => {
-    console.log(email);
-    console.log(password);
-    
     try {
       setIsLoading(true);
       const response = await axios({
@@ -79,6 +72,7 @@ function SignIn({ setUser }) {
       setIsLoading(false);
     }
   };
+
   const errorClass = notification.error ? styles.Error : null;
   return (
     <div className={`${styles.SignIn} container`}>
