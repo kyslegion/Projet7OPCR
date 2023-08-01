@@ -4,6 +4,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const fs = require('fs');
 require('dotenv').config({ path: '../../.env'});
 
 
@@ -260,17 +261,43 @@ app.put('/api/books/:id', upload.single('image'), async (req, res) => {
 
 app.delete('/api/books/:id', async (req, res) => {
   try {
-    const result = await Book.findByIdAndDelete(req.params.id);
-    
-    if (!result) {
+    const bookimg = await Book.findById(req.params.id);
+    if (!bookimg) {
       return res.status(404).send('Aucun livre trouvé avec cet ID');
     }
-
-    res.send(`Le livre avec l'ID ${req.params.id} a été supprimé avec succès`);
+    const imagePath = path.join(__dirname, "../../public", bookimg.imageUrl);
+    if (fs.existsSync(imagePath)) {
+      fs.unlink(imagePath, async (err) => {
+        if (err) {
+          console.error(err);
+          if (err.code !== 'ENOENT') {
+            return res.status(500).send(`Une erreur est survenue lors de la suppression de l'image: ${err.message}`);
+          }
+        }
+        const result = await Book.findByIdAndDelete(req.params.id);
+        if (!result) {
+          if (!res.headersSent) {
+            return res.status(404).send('Aucun livre trouvé avec cet ID');
+          }
+        } else {
+          if (!res.headersSent) {
+            res.send(`Le livre avec l'ID ${req.params.id} a été supprimé avec succès`);
+          }
+        }
+      });
+    } else {
+      console.log(`Le fichier ${imagePath} n'existe pas`);
+    }
+    
+    
   } catch (error) {
-    res.status(500).send(`Une erreur est survenue lors de la suppression du livre: ${error.message}`);
+    if (!res.headersSent) {
+      res.status(500).send(`Une erreur est survenue lors de la suppression du livre: ${error.message}`);
+    }
   }
 });
+
+
 app.post('/api/books/:id/rating', async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
