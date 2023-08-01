@@ -44,7 +44,6 @@ function BookForm({ book, validate }) {
   }, [formState]);
 
   const onSubmit = async (data) => {
-    // When we create a new book
     if (!book) {
       if (!data.file[0]) {
         alert('Vous devez ajouter une image');
