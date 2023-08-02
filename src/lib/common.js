@@ -1,3 +1,4 @@
+/* eslint-disable */
 import axios from 'axios';
 import { API_ROUTES } from '../utils/constants';
 
@@ -40,7 +41,6 @@ export async function getBooks() {
       method: 'GET',
       url: `${API_ROUTES.BOOKS}`,
     });
-    // eslint-disable-next-line array-callback-return
     const books = formatBooks(response.data);
     return books;
   } catch (err) {

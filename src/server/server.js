@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 const express = require('express');
 let models=require('../models/models');
 const path = require('path');
@@ -6,7 +8,6 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs');
 require('dotenv').config({ path: '../../.env'});
-
 
 const saltRounds = 10; 
 const app = express();
@@ -50,16 +51,22 @@ mongoose.connect(url,connectionParams)
       filename: function (req, file, cb) {
         cb(null, Date.now() + '-' + file.originalname); 
       }
-    });
-    
+    }); 
 const upload = multer({ storage: storage });
-app.get('/', async (req, res) => {
+
+app.get('/api/books', async (req, res) => {
+  const books = await Book.find({});
+  return res.status(200).json(books)
+});
+app.get('/api/books/bestrating', async (req, res) => {
   try {
-    const books = await Book.find().exec();
-    res.json(books);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error fetching books");
+    const topRatedBooks = await Book.find({})
+  .sort({ averageRating: -1 })
+  .limit(3);
+    
+    return res.status(200).json(topRatedBooks);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 });
 app.post('/api/books', upload.single('image'), async (req, res) => {
@@ -107,12 +114,10 @@ app.post('/api/auth/signup', async (req, res) => {
     return res.status(400).json({ error: 'Un utilisateur avec cet e-mail existe déjà' });
   }
   const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
-
   let newUser = new User({
     email: req.body.email,
     password: hashedPassword 
   });
-  
   newUser.save()
     .then((user) => {
       const token = jwt.sign(
@@ -120,7 +125,6 @@ app.post('/api/auth/signup', async (req, res) => {
         process.env.TOKEN_SECRET,
         { expiresIn: '24h' }
       );
-
       res.json({ token, message: 'Utilisateur ajouté avec succès' });
     })
     .catch(err => {
@@ -132,21 +136,14 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const users = await User.find({ email: req.body.email });
     if (!users.length) {
-      console.log('No user found with this email');
       return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet e-mail' });
     }
-    
     const user = users[0];
-
     const valid = await bcrypt.compare(req.body.password, user.password)
-
     if(!valid){
-      console.log('Invalid password');
       return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
-
     let token;
-
     if (valid) {
       try {
         token = jwt.sign(
@@ -155,96 +152,39 @@ app.post('/api/auth/login', async (req, res) => {
           { expiresIn: '24h' }
         );
       } catch (error) {
-        console.log('Failed to generate token', error);
         return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
       }
-
       if (!token) {
-        console.log('Failed to generate token');
         return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
       }
-
-      console.log('Login successful, returning response');
       return res.status(200).json({
         userId: user.id,
         token: token
       });
     } else {
-      console.log('Invalid user or password');
       return res.status(401).json({ error: 'Identifiant utilisateur ou mot de passe incorrect' });
     }
-    
   } catch (error) {
-    console.error('An error occurred:', error);
     return res.status(500).json({ error: error.message });
   }
 });
-app.get('/api/books', async (req, res) => {
-  const books = await Book.find({});
-  return res.status(200).json(books)
-});
-app.get('/api/books/bestrating', async (req, res) => {
-  try {
-    const topRatedBooks = await Book.find({})
-  .sort({ averageRating: -1 })
-  .limit(3);
-    
-    return res.status(200).json(topRatedBooks);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
+
 app.get('/api/books/:id', async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
-    
     if (!book) {
       return res.status(404).json({ message: 'Book not found' });
     }
-    
     return res.status(200).json(book);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 });
-app.post('/api/books', upload.single('image'), async (req, res) => {
-  try {
-    const imageUrl = req.file.filename; 
-    
-    const bookData = JSON.parse(req.body.book);
-    const { title, author, year, genre, ratings} = bookData;
-    function calculateAverageRating(ratings) {
-      const ratingsCount = ratings.length;
-      if (ratingsCount === 0) {
-        return 0;
-      } else {
-        const totalRating = ratings.reduce((accumulator, currentRating) => accumulator + currentRating.grade, 0);
-        return totalRating / ratingsCount;
-      }
-    }
-    const newBook = new Book({
-      title:title,
-      author:author,
-      imageUrl:imageUrl,
-      year:year,
-      genre:genre,
-      ratings:ratings
-    });
-    
-    await newBook.save(); 
-    
-    return res.status(201).json({ message: 'Book added successfully' });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
 app.put('/api/books/:id', upload.single('image'), async (req, res) => {
   try {
     let imageUrl;
     if (req.file) {
       imageUrl = '/assets/book/' + req.file.filename;
-    } else {
     }
     const { title, author, year, genre, ratings } = req.body;
     const updatedBook = await Book.findByIdAndUpdate(
@@ -258,7 +198,6 @@ app.put('/api/books/:id', upload.single('image'), async (req, res) => {
     console.log(error)
   }
 });
-
 app.delete('/api/books/:id', async (req, res) => {
   try {
     const bookimg = await Book.findById(req.params.id);
@@ -288,51 +227,150 @@ app.delete('/api/books/:id', async (req, res) => {
     } else {
       console.log(`Le fichier ${imagePath} n'existe pas`);
     }
-    
-    
   } catch (error) {
     if (!res.headersSent) {
       res.status(500).send(`Une erreur est survenue lors de la suppression du livre: ${error.message}`);
     }
   }
 });
-
-
 app.post('/api/books/:id/rating', async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
     if (!book) {
       return res.status(404).send('Aucun livre trouvé avec cet ID');
     }
-  
     const { userId, rating } = req.body;
     const grade = parseInt(rating, 10); 
-  
     const ratingIndex = book.ratings.findIndex(rating => rating.userId === userId);
     if (ratingIndex !== -1) {
       book.ratings[ratingIndex].grade = grade;
     } else {
       book.ratings.push({ userId, grade });
     }
-  
     let totalGrade = 0;
     let totalRatings = book.ratings.length;
-  
     for (let i = 0; i < book.ratings.length; i++) {
       totalGrade += book.ratings[i].grade;
     }
-  
     let newAverageRating = totalGrade / totalRatings;
     let roundedAverageRating = Math.round(newAverageRating);
-  
     book.averageRating = roundedAverageRating;
-  
     const updatedBook = await book.save();
     res.send(updatedBook);
   } catch (error) {
     res.status(500).send(`Une erreur est survenue lors de la mise à jour du livre : ${error.message}`);
   }
 });
+
+//version postman
+//PUT
+// app.put('/api/books/:id', upload.single('image'), async (req, res) => {
+//   try {
+//     let imageUrl;
+//     if (req.file) {
+//       imageUrl = '/assets/book/' + req.file.filename;
+//     } 
+//     const { title, author, year, genre, ratings } = req.body;
+//     let parsedRatings = ratings;
+//     if (typeof ratings === 'string') {
+//       parsedRatings = JSON.parse(ratings);
+//     }
+//     const updateData = {
+//       title, 
+//       author, 
+//       year, 
+//       genre, 
+//       ratings: parsedRatings
+//     };
+//     if (imageUrl) {
+//       updateData.imageUrl = imageUrl;
+//     }
+//     const updatedBook = await Book.findByIdAndUpdate(
+//       req.params.id,
+//       updateData,
+//       { new: true }
+//     );
+//     return res.status(200).json(updatedBook);
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).json({ message: error.message }); 
+//   }
+// });
+
+
+//POST
+// app.post('/api/books', upload.single('image'), async (req, res) => {
+//   try {
+//     let title, author, year, genre, ratings, userId, grade;
+
+//     if (req.body.book) {
+//       const bookData = JSON.parse(req.body.book);
+//       function calculateAverageRating(grade) {
+//         const ratingsCount = ratings.length;
+//         if (ratingsCount === 0) {
+//           return 0;
+//         } else {
+//           const totalRating = ratings.reduce((accumulator, currentRating) => accumulator + currentRating.grade, 0);
+//           return totalRating / ratingsCount;
+//         }
+//       }
+//       ({ title, author, year, genre, ratings } = bookData);
+//       ({ userId, grade } = ratings[0]);
+//       const averageRating = calculateAverageRating(grade);
+
+//       const newBook = new Book({
+//         title,
+//         author,
+//         imageUrl: '/assets/book/' + req.file.filename,
+//         year,
+//         genre,
+//         ratings: [{ userId: userId, grade: grade }],
+//         averageRating
+//       });
+
+//       await newBook.save();
+
+//     } else {
+//       ({ title, author, year, genre, ratings } = req.body);
+//       const parsedRatings = JSON.parse(ratings);
+//       const { userId, grade } = parsedRatings[0]; // Si ratings est un tableau
+    
+//       function calculateAverageRating(grade) {
+//         const ratingsCount = parsedRatings.length;
+//         if (ratingsCount === 0) {
+//           return 0;
+//         } else {
+//           const totalRating = parsedRatings.reduce((accumulator, currentRating) => accumulator + currentRating.grade, 0);
+//           return totalRating / ratingsCount;
+//         }
+//       }
+    
+//       const averageRating = calculateAverageRating(grade);
+    
+//       const newBook = new Book({
+//         title,
+//         author,
+//         imageUrl: '/assets/book/' + req.file.filename, // Assurez-vous que l'upload de l'image fonctionne aussi avec Postman
+//         year,
+//         genre,
+//         ratings: parsedRatings,
+//         averageRating
+//       });
+    
+//       await newBook.save();
+//     }
+    
+
+//     // console.log(title, author, year, genre, ratings);
+//     // console.log(userId, grade);
+    
+//     return res.status(201).json({ message: 'Book added successfully' });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: 'Internal Server Error' });
+//   }
+// });
+
 
 const port = process.env.PORT || 4000;
 
