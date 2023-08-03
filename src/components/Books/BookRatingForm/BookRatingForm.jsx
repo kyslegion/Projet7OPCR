@@ -1,3 +1,4 @@
+/* eslint-disable */
 import * as PropTypes from 'prop-types';
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';

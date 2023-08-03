@@ -1,4 +1,4 @@
-/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable */
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';

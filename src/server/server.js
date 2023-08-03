@@ -39,10 +39,8 @@ mongoose.connect(url,connectionParams)
         console.error(`Error connecting to the database. \n${err}`);
     })
 
-    let Image = models.Image;
     let Book = models.Book;
     let User = models.User;
-    let Rating = models.Rating;
 
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
@@ -52,7 +50,7 @@ mongoose.connect(url,connectionParams)
         cb(null, Date.now() + '-' + file.originalname); 
       }
     }); 
-const upload = multer({ storage: storage });
+    const upload = multer({ storage: storage });
 
 app.get('/api/books', async (req, res) => {
   const books = await Book.find({});
@@ -67,6 +65,53 @@ app.get('/api/books/bestrating', async (req, res) => {
     return res.status(200).json(topRatedBooks);
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+});
+app.get('/api/books/:id', async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+    return res.status(200).json(book);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const users = await User.find({ email: req.body.email });
+    if (!users.length) {
+      return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet e-mail' });
+    }
+    const user = users[0];
+    const valid = await bcrypt.compare(req.body.password, user.password)
+    if(!valid){
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
+    }
+    let token;
+    if (valid) {
+      try {
+        token = jwt.sign(
+          { userId: user.id },
+          process.env.TOKEN_SECRET,
+          { expiresIn: '24h' }
+        );
+      } catch (error) {
+        return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
+      }
+      if (!token) {
+        return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
+      }
+      return res.status(200).json({
+        userId: user.id,
+        token: token
+      });
+    } else {
+      return res.status(401).json({ error: 'Identifiant utilisateur ou mot de passe incorrect' });
+    }
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 });
 app.post('/api/books', upload.single('image'), async (req, res) => {
@@ -131,54 +176,6 @@ app.post('/api/auth/signup', async (req, res) => {
       console.error(`Erreur lors de l'ajout de l'utilisateur : ${err}`);
       res.status(500).json({ error: 'Une erreur s\'est produite lors de l\'inscription' });
     });
-});
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const users = await User.find({ email: req.body.email });
-    if (!users.length) {
-      return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet e-mail' });
-    }
-    const user = users[0];
-    const valid = await bcrypt.compare(req.body.password, user.password)
-    if(!valid){
-      return res.status(401).json({ error: 'Mot de passe incorrect' });
-    }
-    let token;
-    if (valid) {
-      try {
-        token = jwt.sign(
-          { userId: user.id },
-          process.env.TOKEN_SECRET,
-          { expiresIn: '24h' }
-        );
-      } catch (error) {
-        return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
-      }
-      if (!token) {
-        return res.status(500).json({ error: 'Échec de génération du jeton d\'authentification' });
-      }
-      return res.status(200).json({
-        userId: user.id,
-        token: token
-      });
-    } else {
-      return res.status(401).json({ error: 'Identifiant utilisateur ou mot de passe incorrect' });
-    }
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/books/:id', async (req, res) => {
-  try {
-    const book = await Book.findById(req.params.id);
-    if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-    return res.status(200).json(book);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
 });
 app.put('/api/books/:id', upload.single('image'), async (req, res) => {
   try {

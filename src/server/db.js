@@ -1,3 +1,4 @@
+/* eslint-disable */
 const mongoose = require('mongoose')
 const url = "mongodb+srv://kyslegion:12345@cluster0.ytv6p.mongodb.net/projet7?retryWrites=true&w=majority";
 const connectionParams={
