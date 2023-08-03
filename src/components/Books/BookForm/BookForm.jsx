@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as PropTypes from 'prop-types';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import { generateStarsInputs } from '../../../lib/functions';
 import { useFilePreview } from '../../../lib/customHooks';
 import addFileIMG from '../../../images/add_file.png';
@@ -14,7 +14,7 @@ function BookForm({ book, validate }) {
 
   const [rating, setRating] = useState(0);
 
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const {
     register, watch, formState, handleSubmit, reset,
   } = useForm({
@@ -57,7 +57,8 @@ function BookForm({ book, validate }) {
     } else {
       const updatedBook = await updateBook(data, data.id);
       if (!updatedBook.error) {
-        navigate('/');
+        validate(true);
+        // navigate('/');
       } else {
         alert(updatedBook.message);
       }

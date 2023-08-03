@@ -14,3 +14,11 @@
     font-family: "Libre Baskerville", serif;
     font-size: 16px;
 }
+.Created {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.Created img {
+    margin-block: 30px;
+}
