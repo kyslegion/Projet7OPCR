@@ -31,9 +31,9 @@ function App() {
           <Route path={APP_ROUTES.BOOK} element={<Book />} />
           <Route path={APP_ROUTES.UPDATE_BOOK} element={<UpdateBook />} />
           <Route path={APP_ROUTES.ADD_BOOK} element={<AddBook />} />
-          <Route 
-            path={APP_ROUTES.ADD_BOOK} 
-            element={connectedUser ? <AddBook /> : <Navigate to={APP_ROUTES.SIGN_IN} />} 
+          <Route
+            path={APP_ROUTES.ADD_BOOK}
+            element={connectedUser ? <AddBook /> : <Navigate to={APP_ROUTES.SIGN_IN} />}
           />
 
         </Routes>
