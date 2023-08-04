@@ -1,3 +1,4 @@
+/* eslint-disable */
 import axios from 'axios';
 import { API_ROUTES } from '../utils/constants';
 
@@ -142,8 +143,8 @@ export async function addBook(data) {
       },
     });
   } catch (err) {
-    console.error(err);
-    return { error: true, message: err.message };
+    console.error(err,"err");
+    // return { error: true, message: err.message };
   }
 }
 

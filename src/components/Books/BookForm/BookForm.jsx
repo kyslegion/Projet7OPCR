@@ -1,8 +1,7 @@
-/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as PropTypes from 'prop-types';
-// import { useNavigate } from 'react-router-dom';
 import { generateStarsInputs } from '../../../lib/functions';
 import { useFilePreview } from '../../../lib/customHooks';
 import addFileIMG from '../../../images/add_file.png';
@@ -14,7 +13,6 @@ function BookForm({ book, validate }) {
 
   const [rating, setRating] = useState(0);
 
-  // const navigate = useNavigate();
   const {
     register, watch, formState, handleSubmit, reset,
   } = useForm({
@@ -43,28 +41,39 @@ function BookForm({ book, validate }) {
     }
   }, [formState]);
 
+
   const onSubmit = async (data) => {
-    if (!book) {
-      if (!data.file[0]) {
-        alert('Vous devez ajouter une image');
-      }
-      const newBook = await addBook(data);
-      if (!newBook.error) {
-        validate(true);
+    try {
+      if (!book) {
+        if (!data.file[0]) {
+          alert('Vous devez ajouter une image');
+          return;
+        }
+        const newBook = await addBook(data);
+        console.log("Résultat de addBook:", newBook); 
+        
+        if (!newBook.error) {
+          validate(true);
+        } else {
+          console.log("Erreur lors de l'ajout du livre:", newBook.message); 
+          alert(newBook.message);
+        }
       } else {
-        alert(newBook.message);
+        const updatedBook = await updateBook(data, data.id);
+        console.log("Résultat de updateBook:", updatedBook); 
+        if (!updatedBook.error) {
+          validate(true);
+        } else {
+          console.log("Erreur lors de la mise à jour du livre:", updatedBook.message); 
+          alert(updatedBook.message);
+        }
       }
-    } else {
-      const updatedBook = await updateBook(data, data.id);
-      if (!updatedBook.error) {
-        validate(true);
-        // navigate('/');
-      } else {
-        alert(updatedBook.message);
-      }
+    } catch (error) {
+      console.error("Erreur lors de la soumission:", error);
+      alert("Une erreur est survenue lors de la soumission. Veuillez réessayer.");
     }
   };
-
+  
   const readOnlyStars = !!book;
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={styles.Form}>

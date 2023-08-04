@@ -6,7 +6,9 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs');
 const cors = require('cors');
+const sharp = require('sharp');
 const mongoose = require('mongoose')
+
 const models = require('../models/models');
 require('dotenv').config({ path: '../../.env'});
 
@@ -39,16 +41,33 @@ mongoose.connect(url,connectionParams)
 let Book = models.Book;
 let User = models.User;
 
+const uploadPath = path.join(__dirname, '../../public/assets/book');
+app.use('/assets/book', express.static(uploadPath));
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath);
+}
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, '../../public/assets/book'); 
+    cb(null, uploadPath); 
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname); 
+    cb(null, file.originalname); 
   }
 });
-    
 const upload = multer({ storage: storage });
+const resizeImageSync = async (originalPath) => {
+  try {
+    const buffer = fs.readFileSync(originalPath);
+    const resizedImageBuffer = await sharp(buffer)
+      .resize(463, 595) 
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    fs.writeFileSync(originalPath, resizedImageBuffer); 
+  } catch (error) {
+    throw new Error(`Erreur lors du redimensionnement de l'image : ${error.message}`);
+  }
+}
+
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -60,16 +79,13 @@ function authenticateToken(req, res, next) {
 
   jwt.verify(token, process.env.TOKEN_SECRET, (err, user) => {
     if (err) {
-      // Si le token est invalide ou expiré, renvoyer une erreur 403 (interdit)
       return res.status(403).json({ message: "Token invalide ou expiré." });
     }
 
-    // Le token est valide, définir req.user avec les informations de l'utilisateur
     req.user = user;
     next();
   });
 }
-
 app.get('/api/books', async (req, res) => {
   const books = await Book.find({});
   return res.status(200).json(books)
@@ -98,40 +114,58 @@ app.get('/api/books/:id', async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-app.post('/api/books',  authenticateToken, upload.single('image'), async (req, res) => {
+app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     const bookData = JSON.parse(req.body.book);
+
     function calculateAverageRating(grade) {
-      const ratingsCount = ratings.length;
+      const ratingsCount = bookData.ratings.length;
       if (ratingsCount === 0) {
         return 0;
       } else {
-        const totalRating = ratings.reduce((accumulator, currentRating) => accumulator + currentRating.grade, 0);
+        const totalRating = bookData.ratings.reduce((accumulator, currentRating) => accumulator + currentRating.grade, 0);
         return totalRating / ratingsCount;
       }
     }
+
     const { title, author, year, genre, ratings } = bookData;
     const { userId, grade } = ratings[0];
     const averageRating = calculateAverageRating(grade);
-    const newBook = new Book({
-      title,
-      author,
-      imageUrl:'/assets/book/' + req.file.filename,
-      year,
-      genre,
-      ratings: [{ userId:userId, grade:grade }],
-      averageRating
-    });
-    
 
-    await newBook.save();
+    let newBook;
+    try {
+      newBook = new Book({
+        title,
+        author,
+        imageUrl: '/assets/book/' + req.file.filename,
+        year,
+        genre,
+        ratings: [{ userId: userId, grade: grade }],
+        averageRating
+      });
 
-    return res.status(201).json({ message: 'Book added successfully' });
+      const originalPath = req.file.path;
+      await resizeImageSync(originalPath);
+      // fs.unlinkSync(originalPath);
+
+      await newBook.save();
+
+      return res.status(201).json({ message: 'Book added successfully' });
+    } catch (error) {
+      console.error(error);
+      if (error instanceof SyntaxError) {
+        return res.status(400).json({ message: 'Erreur de syntaxe JSON dans les données du livre' });
+      } else if (error.name === 'ValidationError') {
+        return res.status(400).json({ message: 'Données du livre non valides : Vérifiez que tous les champs requis sont fournis' });
+      }
+      return res.status(500).json({ message: 'Erreur lors de l\'ajout du livre' });
+    }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    // return res.status(400).json({ message: 'Erreur lors de l\'analyse des données du livre' });
   }
 });
+
 app.post('/api/auth/signup', async (req, res) => {
   if(!req.body.email || !req.body.password){
 		return res.status(400).send({
@@ -250,31 +284,31 @@ app.post('/api/books/:id/rating',authenticateToken, async (req, res) => {
     res.status(500).send(`Une erreur est survenue lors de la mise à jour du livre : ${error.message}`);
   }
 });
-app.put('/api/books/:id',authenticateToken, upload.single('image'), async (req, res) => {
+app.put('/api/books/:id', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     let imageUrl;
     if (req.file) {
       imageUrl = '/assets/book/' + req.file.filename;
-    } else {
+      await resizeImageSync(req.file.path);
     }
+
     const { title, author, year, genre, ratings } = req.body;
     const updatedBook = await Book.findByIdAndUpdate(
       req.params.id,
-      { title, imageUrl, author, year, genre, ratings }, 
+      { title, imageUrl, author, year, genre, ratings },
       { new: true }
-     
     );
-    // return res.status(201).json(updatedBook);
+
     return res.status(201).json({ message: 'Votre livre a bien été mis à jour' });
   } catch (error) {
-    console.log(error)
+    console.log(error);
+    return res.status(500).json({ error: 'Une erreur est survenue lors de la mise à jour du livre' });
   }
 });
 app.delete('/api/books/:id', authenticateToken, async (req, res) => {
   try {
     const bookimg = await Book.findById(req.params.id);
     if (!bookimg) {
-      console.log('Aucun livre trouvé avec cet ID');
       return res.status(404).send('Aucun livre trouvé avec cet ID');
       
     }
@@ -296,7 +330,6 @@ app.delete('/api/books/:id', authenticateToken, async (req, res) => {
     const result = await Book.findByIdAndDelete(req.params.id);
     if (!result) {
       if (!res.headersSent) {
-        console.log('Aucun livre trouvé avec cet ID 2');
         return res.status(404).send('Aucun livre trouvé avec cet ID');
       }
     } else {
