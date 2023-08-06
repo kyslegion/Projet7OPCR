@@ -115,6 +115,7 @@ export async function rateBook(id, userId, rating) {
 }
 
 export async function addBook(data) {
+  console.time("addBook operation");
 
   const userId = localStorage.getItem('userId');
   const book = {
@@ -134,19 +135,41 @@ export async function addBook(data) {
   bodyFormData.append('image', data.file[0]);
 
   try {
-    return await axios({
+    const response = await axios({
       method: 'post',
       url: `${API_ROUTES.BOOKS}`,
       data: bodyFormData,
+      // timeout: 10000,
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
     });
+    console.log(response,"res");
+    return response;
   } catch (err) {
-    console.error(err,"err");
-    // return { error: true, message: err.message };
+    console.error(err, "err");
+    if (err.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.log(err.response.data);
+      console.log(err.response.status);
+      console.log(err.response.headers);
+      return { error: true, message: err.response.data.message || `Request failed with status code ${err.response.status}` };
+    } else if (err.request) {
+      // The request was made but no response was received
+      console.log(err.request);
+      return { error: true, message: "No response received from server." };
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.log('Error', err.message);
+      return { error: true, message: err.message };
+    }
+  } finally {
+    console.timeEnd("addBook operation");
   }
 }
+
+
 
 export async function updateBook(data, id) {
   // const userId = localStorage.getItem('userId');

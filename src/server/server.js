@@ -46,50 +46,68 @@ app.use('/assets/book', express.static(uploadPath));
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath);
 }
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, uploadPath); 
+//   },
+//   filename: function (req, file, cb) {
+//     cb(null, file.originalname); 
+//   }
+// });
+
+//fonctionn
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadPath); 
+    cb(null, '../../public/assets/book'); 
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname); 
+    cb(null, Date.now() + '-' + file.originalname); 
   }
 });
 const upload = multer({ storage: storage });
-const resizeImageSync = async (originalPath) => {
+const fsPromises = fs.promises;
+
+const resizeImageAsync = async (originalPath) => {
   try {
-    const buffer = fs.readFileSync(originalPath);
+    const buffer = await fsPromises.readFile(originalPath);
     const resizedImageBuffer = await sharp(buffer)
       .resize(463, 595) 
       .jpeg({ quality: 80 })
       .toBuffer();
-    fs.writeFileSync(originalPath, resizedImageBuffer); 
+    await fsPromises.writeFile(originalPath, resizedImageBuffer); 
   } catch (error) {
     throw new Error(`Erreur lors du redimensionnement de l'image : ${error.message}`);
   }
 }
 
 
-function authenticateToken(req, res, next) {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
+
+  console.log('Token from request:', token); // log the received token
 
   if (token == null) {
     return res.status(401).json({ message: "Aucun token fourni." });
   }
 
-  jwt.verify(token, process.env.TOKEN_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Token invalide ou expiré." });
-    }
-
+  try {
+    const user = await jwt.verify(token, process.env.TOKEN_SECRET);
+    console.log('User from token:', user); // log the user extracted from the token
     req.user = user;
     next();
-  });
-}
+  } catch (err) {
+    console.log('Token verification error:', err); // log any error from verification
+    return res.status(403).json({ message: "Token invalide ou expiré." });
+  }
+};
+
+
 app.get('/api/books', async (req, res) => {
   const books = await Book.find({});
   return res.status(200).json(books)
 });
+
 app.get('/api/books/bestrating', async (req, res) => {
   try {
     const topRatedBooks = await Book.find({})
@@ -117,7 +135,7 @@ app.get('/api/books/:id', async (req, res) => {
 app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     const bookData = JSON.parse(req.body.book);
-
+    resizeImageAsync(req.file.path)
     function calculateAverageRating(grade) {
       const ratingsCount = bookData.ratings.length;
       if (ratingsCount === 0) {
@@ -144,13 +162,14 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
         averageRating
       });
 
-      const originalPath = req.file.path;
-      await resizeImageSync(originalPath);
+      // const originalPath = req.file.path;
+      // await resizeImageSync(originalPath);
       // fs.unlinkSync(originalPath);
 
       await newBook.save();
 
       return res.status(201).json({ message: 'Book added successfully' });
+      
     } catch (error) {
       console.error(error);
       if (error instanceof SyntaxError) {
@@ -289,7 +308,7 @@ app.put('/api/books/:id', authenticateToken, upload.single('image'), async (req,
     let imageUrl;
     if (req.file) {
       imageUrl = '/assets/book/' + req.file.filename;
-      await resizeImageSync(req.file.path);
+      await resizeImageAsync(req.file.path);
     }
 
     const { title, author, year, genre, ratings } = req.body;
