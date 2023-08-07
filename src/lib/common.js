@@ -114,7 +114,7 @@ export async function rateBook(id, userId, rating) {
   }
 }
 
-export async function addBook(data) {
+export function addBook(data) {
   console.time("addBook operation");
 
   const userId = localStorage.getItem('userId');
@@ -133,41 +133,50 @@ export async function addBook(data) {
   const bodyFormData = new FormData();
   bodyFormData.append('book', JSON.stringify(book));
   bodyFormData.append('image', data.file[0]);
-
-  try {
-    const response = await axios({
-      method: 'post',
-      url: `${API_ROUTES.BOOKS}`,
-      data: bodyFormData,
-      // timeout: 10000,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    });
-    console.log(response,"res");
-    return response;
-  } catch (err) {
+  axios.defaults.timeout = 5000;
+  return axios({
+    method: 'post',
+    url: `${API_ROUTES.BOOKS}`,
+    data: bodyFormData,
+    timeout: 20000,
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  .then(response => {
+    // debugger
+    console.log(response, "res");
+    return response.data; // Retourner la donnée de la réponse
+  })
+  .catch(err => {
     console.error(err, "err");
+
+    if (err.code === 'ECONNABORTED') {
+      return { error: true, message: 'timeout' };
+    }
+
     if (err.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       console.log(err.response.data);
       console.log(err.response.status);
       console.log(err.response.headers);
       return { error: true, message: err.response.data.message || `Request failed with status code ${err.response.status}` };
     } else if (err.request) {
-      // The request was made but no response was received
       console.log(err.request);
       return { error: true, message: "No response received from server." };
     } else {
-      // Something happened in setting up the request that triggered an Error
       console.log('Error', err.message);
       return { error: true, message: err.message };
     }
-  } finally {
-    console.timeEnd("addBook operation");
-  }
+  });
 }
+
+
+  // .finally(() => {
+  //   debugger
+  //   console.timeEnd("addBook operation");
+  // });
+// }
+
 
 
 

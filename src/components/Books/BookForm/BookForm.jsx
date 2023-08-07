@@ -44,35 +44,44 @@ function BookForm({ book, validate }) {
 
   const onSubmit = async (data) => {
     try {
+      let result;
+  
       if (!book) {
         if (!data.file[0]) {
           alert('Vous devez ajouter une image');
           return;
         }
-        const newBook = await addBook(data);
-        console.log("Résultat de addBook:", newBook); 
-        
-        if (!newBook.error) {
-          validate(true);
-        } else {
-          console.log("Erreur lors de l'ajout du livre:", newBook.message); 
-          alert(newBook.message);
-        }
+        result = await addBook(data);
+        console.log("Résultat de addBook:", result);
       } else {
-        const updatedBook = await updateBook(data, data.id);
-        console.log("Résultat de updateBook:", updatedBook); 
-        if (!updatedBook.error) {
-          validate(true);
+        result = await updateBook(data, data.id);
+        console.log("Résultat de updateBook:", result);
+      }
+  
+      if (!result.error) {
+        validate(true);
+      } else {
+        console.log("Erreur lors de la soumission:", result.message);
+        if (result.response) {
+          alert(`Erreur: ${result.response.data.message}`);
         } else {
-          console.log("Erreur lors de la mise à jour du livre:", updatedBook.message); 
-          alert(updatedBook.message);
+          alert(result.message);
         }
       }
     } catch (error) {
       console.error("Erreur lors de la soumission:", error);
-      alert("Une erreur est survenue lors de la soumission. Veuillez réessayer.");
+  
+      if (error.response) {
+        console.error("Détails de l'erreur:", error.response.data);
+        alert(`Erreur: ${error.response.data.message || 'Une erreur est survenue lors de la soumission.'}`);
+      } else {
+        alert("Une erreur est survenue lors de la soumission. Veuillez réessayer.");
+      }
     }
   };
+  
+  
+  
   
   const readOnlyStars = !!book;
   return (

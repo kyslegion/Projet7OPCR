@@ -8,7 +8,8 @@ const fs = require('fs');
 const cors = require('cors');
 const sharp = require('sharp');
 const mongoose = require('mongoose')
-
+const Jimp = require('jimp');
+const gm = require('gm');
 const models = require('../models/models');
 require('dotenv').config({ path: '../../.env'});
 
@@ -66,21 +67,34 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 const fsPromises = fs.promises;
-
-const resizeImageAsync = async (originalPath) => {
-  try {
-    const buffer = await fsPromises.readFile(originalPath);
-    const resizedImageBuffer = await sharp(buffer)
-      .resize(463, 595) 
-      .jpeg({ quality: 80 })
-      .toBuffer();
-    await fsPromises.writeFile(originalPath, resizedImageBuffer); 
-  } catch (error) {
-    throw new Error(`Erreur lors du redimensionnement de l'image : ${error.message}`);
-  }
+// const resizeImageAsync = async (originalPath) => {
+//   try {
+//     const buffer = await fsPromises.readFile(originalPath);
+//     const resizedImageBuffer = await sharp(buffer)
+//       .resize(463, 595) 
+//       .jpeg({ quality: 80 })
+//       .toBuffer();
+//     await fsPromises.writeFile(originalPath, resizedImageBuffer); 
+//   } catch (error) {
+//     console.log(`Erreur lors du redimensionnement de l'image : ${error.message}`);
+//     throw error;  // Propagez l'erreur
+//   }
+// }
+async function resizeImageJimp(path) {
+  const image = await Jimp.read(path);
+  await image.resize(463, Jimp.AUTO).quality(80).writeAsync(path);
 }
-
-
+// function resizeImageAsync(path) {
+//   return new Promise((resolve, reject) => {
+//     gm(path)
+//       .resize(463, 595)
+//       .quality(80)
+//       .write(path, (err) => {
+//         if (err) reject(err);
+//         else resolve();
+//       });
+//   });
+// }
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -135,7 +149,13 @@ app.get('/api/books/:id', async (req, res) => {
 app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     const bookData = JSON.parse(req.body.book);
-    resizeImageAsync(req.file.path)
+    resizeImageJimp(req.file.path)
+    .then(() => {
+      console.log("Redimensionnement réussi");
+    })
+    .catch(error => {
+      console.error('Erreur lors du redimensionnement de l\'image:', error);
+    });
     function calculateAverageRating(grade) {
       const ratingsCount = bookData.ratings.length;
       if (ratingsCount === 0) {
@@ -166,10 +186,17 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
       // await resizeImageSync(originalPath);
       // fs.unlinkSync(originalPath);
 
-      await newBook.save();
+      newBook.save()
+    .then(() => {
+      console.log("Livre enregistré avec succès");
+    })
+    .catch(error => {
+      console.error("Erreur lors de l'enregistrement du livre:", error);
+    });
 
-      return res.status(201).json({ message: 'Book added successfully' });
-      
+      // return res.status(201).send();
+
+      res.status(202).json({ message: "Traitement en cours..." });
     } catch (error) {
       console.error(error);
       if (error instanceof SyntaxError) {
