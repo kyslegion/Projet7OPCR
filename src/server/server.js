@@ -5,11 +5,14 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs');
+const fsPromises = require('fs').promises;
 const cors = require('cors');
 const sharp = require('sharp');
 const mongoose = require('mongoose')
 const Jimp = require('jimp');
 const gm = require('gm');
+const morgan = require('morgan');
+const compression = require('compression');
 const models = require('../models/models');
 require('dotenv').config({ path: '../../.env'});
 
@@ -17,6 +20,8 @@ const saltRounds = 10;
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'src/assets/books')));
+app.use(compression());
+app.use(morgan('combined'));
 app.use(cors());
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -65,25 +70,71 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + file.originalname); 
   }
 });
+
 const upload = multer({ storage: storage });
-const fsPromises = fs.promises;
-// const resizeImageAsync = async (originalPath) => {
-//   try {
-//     const buffer = await fsPromises.readFile(originalPath);
-//     const resizedImageBuffer = await sharp(buffer)
-//       .resize(463, 595) 
-//       .jpeg({ quality: 80 })
-//       .toBuffer();
-//     await fsPromises.writeFile(originalPath, resizedImageBuffer); 
-//   } catch (error) {
-//     console.log(`Erreur lors du redimensionnement de l'image : ${error.message}`);
-//     throw error;  // Propagez l'erreur
-//   }
-// }
-async function resizeImageJimp(path) {
-  const image = await Jimp.read(path);
-  await image.resize(463, Jimp.AUTO).quality(80).writeAsync(path);
+// const fsPromises = fs.promises;
+const resizeImageAsync = async (originalPath) => {
+  console.log('Original Path:', originalPath);
+
+  // Vérifiez si le chemin du fichier existe
+  try {
+    await fsPromises.access(originalPath);
+  } catch (error) {
+    console.error(`Le fichier à l'emplacement ${originalPath} n'existe pas ou n'est pas accessible.`);
+    throw error;
+  }
+
+  try {
+    console.time('Reading File');
+    const buffer = await fsPromises.readFile(originalPath);
+    console.timeEnd('Reading File');
+
+    console.time('Resizing Image');
+    const resizedImageBuffer = await sharp(buffer)
+      .resize(463, 595) 
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    console.timeEnd('Resizing Image');
+
+    console.time('Writing Resized Image');
+    await fsPromises.writeFile(originalPath, resizedImageBuffer); 
+    console.timeEnd('Writing Resized Image');
+  } catch (error) {
+    console.error('Erreur lors du redimensionnement de l\'image:', error);
+    if (error.code) {
+      console.error('Error Code:', error.code);
+    }
+    if (error.path) {
+      console.error('Error Path:', error.path);
+    }
+    throw error;  // Propagez l'erreur
+  }
 }
+
+const resizeImageMiddleware = async (req, res, next) => {
+  try {
+      if (!req.file) {
+          throw new Error("Aucun fichier téléchargé");
+      }
+
+      console.time("Image Resizing Time");
+      await resizeImageAsync(req.file.path);
+      console.timeEnd("Image Resizing Time");
+
+      next();  // Passez au middleware ou à la fonction suivante
+  } catch (error) {
+      console.error("Erreur lors du redimensionnement de l'image:", error);
+      res.status(500).send("Erreur lors du redimensionnement de l'image");
+  }
+};
+
+
+
+
+// async function resizeImageJimp(path) {
+//   const image = await Jimp.read(path);
+//   await image.resize(463, Jimp.AUTO).quality(80).writeAsync(path);
+// }
 // function resizeImageAsync(path) {
 //   return new Promise((resolve, reject) => {
 //     gm(path)
@@ -92,16 +143,17 @@ async function resizeImageJimp(path) {
 //       .write(path, (err) => {
 //         if (err) reject(err);
 //         else resolve();
-//       });
 //   });
+//       });
 // }
 const authenticateToken = async (req, res, next) => {
+  console.time("Token Authentication Function");
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  console.log('Token from request:', token); // log the received token
-
   if (token == null) {
+    console.timeEnd("Token Authentication Function"); // Il est important de terminer le chronomètre avant de renvoyer une réponse
     return res.status(401).json({ message: "Aucun token fourni." });
   }
 
@@ -109,12 +161,15 @@ const authenticateToken = async (req, res, next) => {
     const user = await jwt.verify(token, process.env.TOKEN_SECRET);
     console.log('User from token:', user); // log the user extracted from the token
     req.user = user;
+    console.timeEnd("Token Authentication Function"); // Terminer le chronomètre avant de passer au middleware suivant
     next();
   } catch (err) {
+    console.timeEnd("Token Authentication Function"); // Terminer le chronomètre avant de renvoyer une réponse en cas d'erreur
     console.log('Token verification error:', err); // log any error from verification
     return res.status(403).json({ message: "Token invalide ou expiré." });
   }
 };
+
 
 
 app.get('/api/books', async (req, res) => {
@@ -146,16 +201,27 @@ app.get('/api/books/:id', async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
+app.post('/api/books', authenticateToken, upload.single('image'), resizeImageMiddleware, async (req, res) => {
+  console.time("Book Request Processing Time");
+
   try {
-    const bookData = JSON.parse(req.body.book);
-    resizeImageJimp(req.file.path)
-    .then(() => {
-      console.log("Redimensionnement réussi");
-    })
-    .catch(error => {
-      console.error('Erreur lors du redimensionnement de l\'image:', error);
-    });
+    console.time("JSON Parsing Time");
+    // try {
+      const bookData = JSON.parse(req.body.book);
+    console.timeEnd("JSON Parsing Time");
+
+    console.log("Redimensionnement réussi");
+
+    const { title, author, year, genre, ratings } = bookData;
+    
+    let userId, grade;
+    if (ratings && ratings.length > 0) {
+        ({ userId, grade } = ratings[0]);
+    } else {
+        grade = 0;  // ou toute autre valeur par défaut que vous souhaitez définir
+    }
+
+    console.time("Average Rating Calculation Time");
     function calculateAverageRating(grade) {
       const ratingsCount = bookData.ratings.length;
       if (ratingsCount === 0) {
@@ -165,28 +231,22 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
         return totalRating / ratingsCount;
       }
     }
-
-    const { title, author, year, genre, ratings } = bookData;
-    const { userId, grade } = ratings[0];
     const averageRating = calculateAverageRating(grade);
+    console.timeEnd("Average Rating Calculation Time");
 
-    let newBook;
+    console.time("Book Saving Time");
     try {
-      newBook = new Book({
+      let newBook = new Book({
         title,
         author,
         imageUrl: '/assets/book/' + req.file.filename,
         year,
         genre,
-        ratings: [{ userId: userId, grade: grade }],
+        ratings: [{ userId, grade }],
         averageRating
       });
 
-      // const originalPath = req.file.path;
-      // await resizeImageSync(originalPath);
-      // fs.unlinkSync(originalPath);
-
-      newBook.save()
+      await newBook.save()
     .then(() => {
       console.log("Livre enregistré avec succès");
     })
@@ -194,9 +254,8 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
       console.error("Erreur lors de l'enregistrement du livre:", error);
     });
 
-      // return res.status(201).send();
-
-      res.status(202).json({ message: "Traitement en cours..." });
+      res.status(201).json({ message: 'Livre ajouté avec succès' });
+      console.timeEnd("Book Saving Time");
     } catch (error) {
       console.error(error);
       if (error instanceof SyntaxError) {
@@ -206,10 +265,16 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
       }
       return res.status(500).json({ message: 'Erreur lors de l\'ajout du livre' });
     }
-  } catch (error) {
-    console.error(error);
-    // return res.status(400).json({ message: 'Erreur lors de l\'analyse des données du livre' });
-  }
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+        console.error("Erreur de syntaxe JSON:", e);
+        res.status(400).json({ message: 'Erreur de syntaxe JSON dans les données du livre' });
+        return; // Ajoutez cette ligne pour arrêter l'exécution du code
+    }
+    throw e;
+}
+
+  console.timeEnd("Book Request Processing Time");
 });
 
 app.post('/api/auth/signup', async (req, res) => {

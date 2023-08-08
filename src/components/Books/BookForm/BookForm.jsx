@@ -43,6 +43,13 @@ function BookForm({ book, validate }) {
 
 
   const onSubmit = async (data) => {
+    console.time("Total onSubmit Function Duration"); // Mesurer la durée totale de la fonction
+    
+  //   if (!data.title || !data.author || !data.year || !data.genre) {
+  //     alert('Veuillez remplir tous les champs obligatoires.');
+  //     return;
+  // }
+  
     try {
       let result;
   
@@ -51,11 +58,23 @@ function BookForm({ book, validate }) {
           alert('Vous devez ajouter une image');
           return;
         }
+        
+        console.time("addBook Function Duration"); // Mesurer la durée de la fonction addBook
         result = await addBook(data);
+        // result = await addBook(data);
+        if (!result) {
+            throw new Error("addBook n'a renvoyé aucune réponse.");
+        }
+        console.timeEnd("addBook Function Duration"); // Arrêter le chronomètre pour addBook
         console.log("Résultat de addBook:", result);
+        
       } else {
+        
+        console.time("updateBook Function Duration"); // Mesurer la durée de la fonction updateBook
         result = await updateBook(data, data.id);
+        console.timeEnd("updateBook Function Duration"); // Arrêter le chronomètre pour updateBook
         console.log("Résultat de updateBook:", result);
+        
       }
   
       if (!result.error) {
@@ -78,8 +97,11 @@ function BookForm({ book, validate }) {
         alert("Une erreur est survenue lors de la soumission. Veuillez réessayer.");
       }
     }
+  
+    console.timeEnd("Total onSubmit Function Duration"); // Arrêter le chronomètre pour la durée totale de la fonction
   };
   
+
   
   
   

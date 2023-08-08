@@ -115,8 +115,9 @@ export async function rateBook(id, userId, rating) {
 }
 
 export function addBook(data) {
-  console.time("addBook operation");
+  console.time("Total addBook Function Duration");
 
+  console.time("LocalStorage & Data Preparation");
   const userId = localStorage.getItem('userId');
   const book = {
     userId,
@@ -130,28 +131,35 @@ export function addBook(data) {
     }],
     averageRating: parseInt(data.rating, 10),
   };
+  console.log(JSON.stringify(book));
   const bodyFormData = new FormData();
   bodyFormData.append('book', JSON.stringify(book));
   bodyFormData.append('image', data.file[0]);
-  axios.defaults.timeout = 5000;
+  console.timeEnd("LocalStorage & Data Preparation");
+
+  console.time("axios call duration"); // Démarrer le chronomètre
+
   return axios({
     method: 'post',
     url: `${API_ROUTES.BOOKS}`,
     data: bodyFormData,
-    timeout: 20000,
+    timeout: 5000,
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`,
     },
   })
   .then(response => {
-    // debugger
+    console.timeEnd("axios call duration"); // Arrêter le chronomètre et afficher la durée
     console.log(response, "res");
-    return response.data; // Retourner la donnée de la réponse
+    console.timeEnd("Total addBook Function Duration");
+    return response.data;
   })
   .catch(err => {
+    console.timeEnd("axios call duration"); // Arrêter le chronomètre et afficher la durée en cas d'erreur
     console.error(err, "err");
 
     if (err.code === 'ECONNABORTED') {
+      console.timeEnd("Total addBook Function Duration");
       return { error: true, message: 'timeout' };
     }
 
@@ -159,16 +167,20 @@ export function addBook(data) {
       console.log(err.response.data);
       console.log(err.response.status);
       console.log(err.response.headers);
+      console.timeEnd("Total addBook Function Duration");
       return { error: true, message: err.response.data.message || `Request failed with status code ${err.response.status}` };
     } else if (err.request) {
       console.log(err.request);
+      console.timeEnd("Total addBook Function Duration");
       return { error: true, message: "No response received from server." };
     } else {
       console.log('Error', err.message);
+      console.timeEnd("Total addBook Function Duration");
       return { error: true, message: err.message };
     }
   });
 }
+
 
 
   // .finally(() => {
