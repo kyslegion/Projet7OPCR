@@ -201,7 +201,7 @@ app.get('/api/books/:id', async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-app.post('/api/books', authenticateToken, upload.single('image'), resizeImageMiddleware, async (req, res) => {
+app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
   console.time("Book Request Processing Time");
 
   try {
