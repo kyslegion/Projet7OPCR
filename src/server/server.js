@@ -76,7 +76,7 @@ const upload = multer({ storage: storage });
 const resizeImageAsync = async (originalPath) => {
   console.log('Original Path:', originalPath);
 
-  // Vérifiez si le chemin du fichier existe
+ 
   try {
     await fsPromises.access(originalPath);
   } catch (error) {
@@ -107,7 +107,7 @@ const resizeImageAsync = async (originalPath) => {
     if (error.path) {
       console.error('Error Path:', error.path);
     }
-    throw error;  // Propagez l'erreur
+    throw error;  
   }
 }
 
@@ -121,7 +121,7 @@ const resizeImageMiddleware = async (req, res, next) => {
       await resizeImageAsync(req.file.path);
       console.timeEnd("Image Resizing Time");
 
-      next();  // Passez au middleware ou à la fonction suivante
+      next(); 
   } catch (error) {
       console.error("Erreur lors du redimensionnement de l'image:", error);
       res.status(500).send("Erreur lors du redimensionnement de l'image");
@@ -153,19 +153,19 @@ const authenticateToken = async (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (token == null) {
-    console.timeEnd("Token Authentication Function"); // Il est important de terminer le chronomètre avant de renvoyer une réponse
+    console.timeEnd("Token Authentication Function"); 
     return res.status(401).json({ message: "Aucun token fourni." });
   }
 
   try {
     const user = await jwt.verify(token, process.env.TOKEN_SECRET);
-    console.log('User from token:', user); // log the user extracted from the token
+    console.log('User from token:', user); 
     req.user = user;
-    console.timeEnd("Token Authentication Function"); // Terminer le chronomètre avant de passer au middleware suivant
+    console.timeEnd("Token Authentication Function"); 
     next();
   } catch (err) {
-    console.timeEnd("Token Authentication Function"); // Terminer le chronomètre avant de renvoyer une réponse en cas d'erreur
-    console.log('Token verification error:', err); // log any error from verification
+    console.timeEnd("Token Authentication Function"); 
+    console.log('Token verification error:', err); 
     return res.status(403).json({ message: "Token invalide ou expiré." });
   }
 };
@@ -201,7 +201,8 @@ app.get('/api/books/:id', async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
+// app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
+app.post('/api/books', authenticateToken, upload.single('image'), resizeImageMiddleware, async (req, res) => {
   console.time("Book Request Processing Time");
 
   try {
@@ -218,7 +219,7 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
     if (ratings && ratings.length > 0) {
         ({ userId, grade } = ratings[0]);
     } else {
-        grade = 0;  // ou toute autre valeur par défaut que vous souhaitez définir
+        grade = 0;  
     }
 
     console.time("Average Rating Calculation Time");
@@ -269,7 +270,7 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
     if (e instanceof SyntaxError) {
         console.error("Erreur de syntaxe JSON:", e);
         res.status(400).json({ message: 'Erreur de syntaxe JSON dans les données du livre' });
-        return; // Ajoutez cette ligne pour arrêter l'exécution du code
+        return; 
     }
     throw e;
 }

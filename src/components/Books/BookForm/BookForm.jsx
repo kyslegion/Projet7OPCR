@@ -80,7 +80,7 @@ function BookForm({ book, validate }) {
       if (!result.error) {
         validate(true);
       } else {
-        console.log("Erreur lors de la soumission:", result.message);
+        console.log("Erreur lors de la soumission2:", result.message);
         if (result.response) {
           alert(`Erreur: ${result.response.data.message}`);
         } else {
@@ -88,7 +88,7 @@ function BookForm({ book, validate }) {
         }
       }
     } catch (error) {
-      console.error("Erreur lors de la soumission:", error);
+      console.error("Erreur lors de la soumission1:", error);
   
       if (error.response) {
         console.error("Détails de l'erreur:", error.response.data);
