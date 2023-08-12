@@ -67,25 +67,25 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 const fsPromises = fs.promises;
 
-const resizeImageAsync = async (originalPath) => {
-  try {
-    const buffer = await fsPromises.readFile(originalPath);
-    const resizedImageBuffer = await sharp(buffer)
-      .resize(463, 595) 
-      .jpeg({ quality: 80 })
-      .toBuffer();
-    await fsPromises.writeFile(originalPath, resizedImageBuffer); 
-  } catch (error) {
-    throw new Error(`Erreur lors du redimensionnement de l'image : ${error.message}`);
-  }
-}
+// const resizeImageAsync = async (originalPath) => {
+//   try {
+//     const buffer = await fsPromises.readFile(originalPath);
+//     const resizedImageBuffer = await sharp(buffer)
+//       .resize(463, 595) 
+//       .jpeg({ quality: 80 })
+//       .toBuffer();
+//     await fsPromises.writeFile(originalPath, resizedImageBuffer); 
+//   } catch (error) {
+//     throw new Error(`Erreur lors du redimensionnement de l'image : ${error.message}`);
+//   }
+// }
 
 
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  console.log('Token from request:', token); // log the received token
+  console.log('Token from request:', token); 
 
   if (token == null) {
     return res.status(401).json({ message: "Aucun token fourni." });
@@ -93,11 +93,11 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const user = await jwt.verify(token, process.env.TOKEN_SECRET);
-    console.log('User from token:', user); // log the user extracted from the token
+    console.log('User from token:', user);
     req.user = user;
     next();
   } catch (err) {
-    console.log('Token verification error:', err); // log any error from verification
+    console.log('Token verification error:', err); 
     return res.status(403).json({ message: "Token invalide ou expiré." });
   }
 };
@@ -135,7 +135,7 @@ app.get('/api/books/:id', async (req, res) => {
 app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     const bookData = JSON.parse(req.body.book);
-    resizeImageAsync(req.file.path)
+    // resizeImageAsync(req.file.path)
     function calculateAverageRating(grade) {
       const ratingsCount = bookData.ratings.length;
       if (ratingsCount === 0) {
@@ -308,7 +308,7 @@ app.put('/api/books/:id', authenticateToken, upload.single('image'), async (req,
     let imageUrl;
     if (req.file) {
       imageUrl = '/assets/book/' + req.file.filename;
-      await resizeImageAsync(req.file.path);
+      // await resizeImageAsync(req.file.path);
     }
 
     const { title, author, year, genre, ratings } = req.body;
